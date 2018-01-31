@@ -7,9 +7,9 @@
 // (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T)))
 // ->
 // (Var Prefix const)
-template <typename T3, typename T4>  
+template <typename T, typename T2>  
 struct Car {
-    using type = T3;
+    using type = T;
 };
 
 // (Lambda  (PVar T) (Var Prefix int))
@@ -38,7 +38,7 @@ struct Brown {
 
 // (Lambda (PVar T) (App (Var Prefix std::is_polymorphic) (Var Prefix T))
 // ->
-// (Var Infix std::is_polymorphic)
+// (Var Prefix std::is_polymorphic)
 template <typename T>
 struct Teal {
      using type = std::is_polymorphic<T>;
@@ -46,37 +46,35 @@ struct Teal {
 
 // (Lambda  (PVar T) (App  (Lambda  (PVar T) (Var Prefix int)) (Var Prefix T)))
 // ->
-// (Var Infix Foo)
+// (Var Prefix Foo)
 template <typename T>
 struct Yellow {
      using type = Foo<T>;
 };
 
-// Broken Tests: 
- 
-
-// (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T)))
+// (Lambda  (PVar T3) (Lambda  (PVar T4) (App  (App  (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T))) (Var Prefix T3)) (Var Prefix T4))))
 // ->
 // (Var Prefix const)
-//template <typename T, typename T2>  
-//struct Car {
-//    using type = T;
-//};
+template <typename T3, typename T4>
+struct Green {
+     using type = typename Car<T3, T4>::type;
+};
 
-// V1: (Lambda  (PVar T) (Lambda  (PVar T2) (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T)))))
 
-// (Lambda  (PVar T) (Lambda  (PVar T2) (App  (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T)))))) (Lambda  (PVar T) (Lambda  (PVar T2) (App  (App  (Var Prefix T2)))))
+// Broken Tests: 
+
+// (Lambda  (PVar T) (Lambda  (PVar T2) (App  (App  (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T))) (Var Prefix T)) (Var Prefix T2))))
+// ->
+// (Var Prefix const)
+// It dislikes the shared names on the lambda variables at the moment, the Point-free algorithm needs
+// some tweaking. 
 template <typename T, typename T2>
 struct Red {
      using type = typename Car<T, T2>::type;
 };
 
-// Unsure 
+// Unsure what to do with: 
 
-template <typename T3, typename T4>
-struct Green {
-     using type = typename Car<T3, T4>::type;
-};
 
 // Not Tested:
 
@@ -84,3 +82,7 @@ template <typename T>
 struct Orange {
      bool value = std::is_polymorphic<T>::value;
 };
+
+// Ideas for other tests
+// 1) Inverse of a template that returns const, return T2 instead of T on Car
+// 2) A template that calls a struct that takes no arguements?
