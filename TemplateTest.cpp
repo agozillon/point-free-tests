@@ -60,18 +60,16 @@ struct Green {
      using type = typename Car<T3, T4>::type;
 };
 
-
-// Broken Tests: 
-
 // (Lambda  (PVar T) (Lambda  (PVar T2) (App  (App  (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T))) (Var Prefix T)) (Var Prefix T2))))
 // ->
-// (Var Prefix const)
-// It dislikes the shared names on the lambda variables at the moment, the Point-free algorithm needs
-// some tweaking. 
+// (Var Prefix const) 
 template <typename T, typename T2>
 struct Red {
      using type = typename Car<T, T2>::type;
 };
+
+// Broken Tests: 
+
 
 // Unsure what to do with: 
 
