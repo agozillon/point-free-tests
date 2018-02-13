@@ -36,9 +36,9 @@ struct Brown {
      using type = typename Foo<T>::type;
 };
 
-// (Lambda (PVar T) (App (Var Prefix std::is_polymorphic) (Var Prefix T))
+// (Lambda (PVar T) (App (Var Prefix is_polymorphic) (Var Prefix T))
 // ->
-// (Var Prefix std::is_polymorphic)
+// (Var Prefix is_polymorphic)
 template <typename T>
 struct Teal {
      using type = std::is_polymorphic<T>;
@@ -68,19 +68,43 @@ struct Red {
      using type = typename Car<T, T2>::type;
 };
 
-// Broken Tests: 
-
-
-// Unsure what to do with: 
-
-
-// Not Tested:
-
+// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic_v) (Var Prefix T)))
+// ->
+// (Var Prefix is_polymorphic_v)
 template <typename T>
 struct Orange {
      bool value = std::is_polymorphic<T>::value;
 };
 
+// Broken Tests: 
+
+template <typename T>
+struct Violet {
+    using type = typename std::is_polymorphic<T>::type;
+};
+
+// Unsure what to do with: 
+
+// Not Tested:
+
+template <typename F, typename ...Ts>
+using invoke = typename F::template m_invoke<Ts...>;
+ 
+template <typename F, typename X, typename Y, typename Z>
+struct flip3 {
+  using type = invoke<F,X,Z,Y>;
+};
+
+// -- 
+
+template <typename T>
+struct Grey {
+    using type = typename std::is_polymorphic<typename Yellow<T>::type>::type;
+};
+
 // Ideas for other tests
 // 1) Inverse of a template that returns const, return T2 instead of T on Car
 // 2) A template that calls a struct that takes no arguements?
+// 3) Something that interacts similarly to std::is_polymorphic<>::value, where the value is dependent
+//    except that it isn't relying on a standard function. 
+
