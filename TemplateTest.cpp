@@ -44,14 +44,6 @@ struct Teal {
      using type = std::is_polymorphic<T>;
 };
 
-// (Lambda  (PVar T) (App  (Lambda  (PVar T) (Var Prefix int)) (Var Prefix T)))
-// ->
-// (Var Prefix Foo)
-template <typename T>
-struct Yellow {
-     using type = Foo<T>;
-};
-
 // (Lambda  (PVar T3) (Lambda  (PVar T4) (App  (App  (Lambda  (PVar T) (Lambda  (PVar T2) (Var Prefix T))) (Var Prefix T3)) (Var Prefix T4))))
 // ->
 // (Var Prefix const)
@@ -76,12 +68,26 @@ struct Orange {
      bool value = std::is_polymorphic<T>::value;
 };
 
-// Broken Tests: 
-
+// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic_t) (Var Prefix T)))
+// ->
+// (Var Prefix is_polymorphic_t)
 template <typename T>
 struct Violet {
     using type = typename std::is_polymorphic<T>::type;
 };
+
+// (Lambda  (PVar T) (App  (Lambda  (PVar T) (Var Prefix int)) (Var Prefix T)))
+// ->
+// (Var Prefix Foo)
+template <typename T>
+struct Yellow {
+     using type = Foo<T>;
+};
+
+// Broken Tests: 
+
+
+
 
 // Unsure what to do with: 
 
@@ -107,4 +113,5 @@ struct Grey {
 // 2) A template that calls a struct that takes no arguements?
 // 3) Something that interacts similarly to std::is_polymorphic<>::value, where the value is dependent
 //    except that it isn't relying on a standard function. 
+// 4) Try an integral_constant
 
