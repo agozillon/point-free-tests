@@ -84,13 +84,18 @@ struct Yellow {
      using type = Foo<T>;
 };
 
+// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic) (App  (Lambda  (PVar T) (App  (Var Prefix Foo) (Var Prefix T))) (Var Prefix T))))
+// ->
+// (App  (App  (Var Infix .) (Var Prefix is_polymorphic_t)) (Var Prefix Foo))
+template <typename T>
+struct Grey {
+    using type = typename std::is_polymorphic<typename Yellow<T>::type>::type;
+};
+
 // Broken Tests: 
 
-
-
-
 // Unsure what to do with: 
-
+ 
 // Not Tested:
 
 template <typename F, typename ...Ts>
@@ -99,13 +104,6 @@ using invoke = typename F::template m_invoke<Ts...>;
 template <typename F, typename X, typename Y, typename Z>
 struct flip3 {
   using type = invoke<F,X,Z,Y>;
-};
-
-// -- 
-
-template <typename T>
-struct Grey {
-    using type = typename std::is_polymorphic<typename Yellow<T>::type>::type;
 };
 
 // Ideas for other tests
