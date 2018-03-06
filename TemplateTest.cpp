@@ -200,30 +200,113 @@ struct Blanc {
     bool value = Noir<T>::value;
 };
 
-// Broken Tests:
+// (Lambda  (PVar T) (App  (Var Prefix sizeof) (Var Prefix T)))
+// ->
+// (Var Prefix sizeof)
+template <typename T>
+struct NonVariadicSizeOf {
+    static const std::size_t value = sizeof(T);
+};
 
-// -----
-
-// algorithm doesn't work with constructs like this right now:
-//template <typename F, typename ...Ts>
-//using invoke = typename F::template m_invoke<Ts...>;
-
-// -----
-
-template<class... Types>
+// Can something like sizeof be curried? This also has the issue of having a return type
+// that isn't a template parameter but an integer. 
+// (Lambda  (PVar ...Types) (App  (Var Prefix sizeof...) (Var Prefix ...Types)))
+// ->
+// (Var Prefix sizeof...)
+template <class... Types>
 struct Variadic {
     static const std::size_t value = sizeof...(Types);
 };
 
+// Top is type, below is for value. It should be noted that these can actually be refactored
+// further as we know that typename P or T is only used in one of the statements, but the algorithm
+// doesn't and instead makes use of const which isn't required information. But that can be perhaps a
+// consideration for the future.  
+// (Lambda  (PVar P) (Lambda  (PVar T) (Var Prefix P)))
+// ->
+// (Var Prefix const)
+// ---
+// (Lambda  (PVar P) (Lambda  (PVar T) (App  (Lambda  (PVar T) (App  (Var Prefix enable_if_t::v) (App  (Var Prefix is_integral::v) (Var Prefix T)))) (Var Prefix T))))
+// ->
+// (App  (Var Prefix const) (App  (App  (Var Infix .) (Var Prefix enable_if_t::v)) (Var Prefix is_integral::v)))
+template <typename P, typename T>
+class TwoMembers {
+    using type = P;
+    bool value = Noir<T>::value;   
+};
+
+// (Lambda  (PVar I) (Var Prefix I))
+// ->
+// (Var Prefix id)
+template <const int I>
+struct IntegerParam {
+    const static int value = I;
+};
+
+// (Lambda  (PVar I) (App  (App  (Var Prefix integral_constant) (Var Prefix int)) (Var Prefix I)))
+// ->
+// (App  (Var Prefix integral_constant) (Var Prefix int))
+template <int I>
+struct IntegralConstant {
+    using type = std::integral_constant<int, I>;
+};
+
+// (Lambda  (PVar I) (App  (App  (Var Prefix integral_constant::v) (Var Prefix int)) (Var Prefix I)))
+// ->
+// (App  (Var Prefix integral_constant::v) (Var Prefix int))
+template <int I>
+struct IntegralConstant2 {
+    static const int value = std::integral_constant<int, I>::value;
+};
+
+// Broken Tests:
+
+// I MIGHT NEED TO HAVE TYPES NOTATED IN THE VAR TYPE, FOR EXAMPLE HOW DO I TELL IF SOMETHING IS A CHAR
+// OR IS AN INT OR EVEN A VARIADIC.
+// (Lambda  (PVar F) (Lambda  (PVar ...Ts) (App (Var Prefix F::m_invoke) (Var ...Ts)) ))
+// OR
+// something that takes into consideration that m_invoke is a member of F
+template <typename F, typename ...Ts>
+class Variadic2 {
+    using type = typename F::template m_invoke<Ts...>;
+};
+
+template <typename T>
+struct PointerTest {
+    using type =  T *;
+}; 
+
+// Unsure how to find this at the moment, specifying PointerTest will always find the main template at the moment. Whereas specifying PointerTest<T*> doesn't appear to work. 
+template <typename T>
+struct PointerTest<T*> {
+    using type =  T;
+};
+
+// Interestingly this may not be the best choice of attribute to test with.
+// As it has its very own type node courtesy of myself!
+template <const int I, typename T>
+struct AttributeTest {
+    using type =  T __attribute__((address_space(I))) *;
+};
+
+template <const int I, typename T>
+struct AttributeTest2 {
+    using type =  T __attribute__((align_value(I)));
+};
+
 // Unsure what to do with: 
+
+// algorithm doesn't work with constructs like this right now, should they be considered?:
+//template <typename F, typename ...Ts>
+//using invoke = typename F::template m_invoke<Ts...>;
 
 
 // Not Tested:
 
+// Ideas for other tests:
 
-// Ideas for other tests
-// 1) A template structure with more than 1 type or value member
-// 2) A template structure with a specialization or more than one
-// 3) Try an integral_constant
-// 4) A template that takes a non-type template parameter
-
+// Questions to ask Paul:
+// 1) Do we want to deal with specializations if its the template specified
+// 2) Do we want to deal with the conversion of normal type aliases and defintions or restrict it to classes and structures
+// 3) Do we want to deal with values and non-type template parameters or restrict it to types, if we deal with values then I will have to store the type of variables in the lambda calculus (not a really big deal and I may have to do this to keep track of template structures versus normal structures). 
+// 4) Can Curtains curry things like sizeof? Does it matter if it can't?  
