@@ -1,9 +1,6 @@
-// clang++ -std=c++11 -Xclang -ast-dump -fsyntax-only
-// point-free TemplateTest.cpp -- -std=c++11
+// clang++ -std=c++14 -Xclang -ast-dump -fsyntax-only
+// point-free TemplateTest.cpp -- -std=c++14
 #include <type_traits>
-
-template< bool B, class T = void >
-using enable_if_t = typename std::enable_if<B,T>::type;
 
 // What I believe to be correct 
 
@@ -72,17 +69,17 @@ struct Red2 {
      using type = typename Bar<T2, T>::type;
 };
 
-// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic_v) (Var Prefix T)))
+// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic::v) (Var Prefix T)))
 // ->
-// (Var Prefix is_polymorphic_v)
+// (Var Prefix is_polymorphic::v)
 template <typename T>
 struct Orange {
      bool value = std::is_polymorphic<T>::value;
 };
 
-// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic_t) (Var Prefix T)))
+// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic::t) (Var Prefix T)))
 // ->
-// (Var Prefix is_polymorphic_t)
+// (Var Prefix is_polymorphic::t)
 template <typename T>
 struct Violet {
     using type = typename std::is_polymorphic<T>::type;
@@ -96,15 +93,14 @@ struct Yellow {
      using type = Foo<T>;
 };
 
-// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic) (App  (Lambda  (PVar T) (App  (Var Prefix Foo) (Var Prefix T))) (Var Prefix T))))
+// (Lambda  (PVar T) (App  (Var Prefix is_polymorphic::t) (App  (Lambda  (PVar T) (App  (Var Prefix Foo) (Var Prefix T))) (Var Prefix T))))
 // ->
-// (App  (App  (Var Infix .) (Var Prefix is_polymorphic_t)) (Var Prefix Foo))
+// (App  (App  (Var Infix .) (Var Prefix is_polymorphic::t)) (Var Prefix Foo))
 template <typename T>
 struct Grey {
     using type = typename std::is_polymorphic<typename Yellow<T>::type>::type;
 };
-
-// I believe the below is correct, however I should ask Paul if he also thinks it is on Tuesday or I should send an email. 
+ 
 template <typename F, typename ...Ts>
 using invoke = typename F::template m_invoke<Ts...>;
 
@@ -117,14 +113,6 @@ using invoke = typename F::template m_invoke<Ts...>;
 template <typename F, typename X, typename Y, typename Z>
 struct flip3 {
   using type = invoke<F,X,Z,Y>;
-};
-
-// (Lambda  (PVar T) (App  (Var Prefix enable_if_t_v) (App  (Var Prefix is_integral_v) (Var Prefix T))))
-// ->
-// (App  (App  (Var Infix .) (Var Prefix enable_if_t_v)) (Var Prefix is_integral_v))
-template <typename T>
-struct Noir {
-    bool value = enable_if_t<std::is_integral<T>::value>::value;
 };
 
 struct NotATemplate {
@@ -147,6 +135,9 @@ struct StructTest2 {
    using type = NotATemplate;
 };
 
+// (Lambda  (PVar T) (Var Prefix true))
+// ->
+// (App  (Var Prefix const) (Var Prefix true))
 template <typename T>
 struct Vert {
     bool value = true;
@@ -168,12 +159,16 @@ struct Vert2 {
     const static int value = 2;
 };
 
+// (Lambda  (PVar T) (App  (Lambda  (PVar T) (Var Prefix 2)) (Var Prefix T)))
+// ->
+// (App  (Var Prefix const) (Var Prefix 2))
 template <typename T>
 struct Rouge2 {
     const static int value = Vert2<T>::value;
 };
 
-//(Lambda  (PVar T) (App  (Lambda  (PVar T) (Var Prefix c)) (Var Prefix T)))
+
+// (Lambda  (PVar T) (Var Prefix c))
 // ->
 // (App  (Var Prefix const) (Var Prefix c))
 template <typename T>
@@ -181,17 +176,31 @@ struct Vert3 {
     const static char value = 'c';
 };
 
+//(Lambda  (PVar T) (App  (Lambda  (PVar T) (Var Prefix c)) (Var Prefix T)))
+// ->
+// (App  (Var Prefix const) (Var Prefix c))
 template <typename T>
 struct Rouge3 {
     const static char value = Vert3<T>::value;
 };
 
-// Broken Tests: 
+// (Lambda  (PVar T) (App  (Var Prefix enable_if_t::v) (App  (Var Prefix is_integral::v) (Var Prefix T))))
+// ->
+// (App  (App  (Var Infix .) (Var Prefix enable_if_t::v)) (Var Prefix is_integral::v))
+template <typename T>
+struct Noir {
+    bool value = std::enable_if_t<std::is_integral<T>::value>::value;
+};
 
+// (Lambda  (PVar T) (App  (Lambda  (PVar T) (App  (Var Prefix enable_if_t::v) (App  (Var Prefix is_integral::v) (Var Prefix T)))) (Var Prefix T)))
+// -> 
+// (App  (App  (Var Infix .) (Var Prefix enable_if_t::v)) (Var Prefix is_integral::v))
 template <typename T>
 struct Blanc {
     bool value = Noir<T>::value;
 };
+
+// Broken Tests:
 
 // -----
 
@@ -216,4 +225,5 @@ struct Variadic {
 // 1) A template structure with more than 1 type or value member
 // 2) A template structure with a specialization or more than one
 // 3) Try an integral_constant
+// 4) A template that takes a non-type template parameter
 
