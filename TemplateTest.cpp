@@ -403,3 +403,53 @@ struct StructTest2 {
    using type = NotATemplate;
 };
 
+template <typename ...Ts>
+struct StructTest3 {
+   using type = NotATemplate;
+};
+
+#define CURTAINS_V_SIMPLE
+#include "curtains.hpp"
+using namespace curtains;
+using namespace curtains::v;
+
+// quote<id_t>
+template <class T>
+struct MyId {
+  using type = impl::id_t<T>;
+};
+
+template <typename T>
+struct MyId2 {
+  using type = eval<T>;
+};
+
+template <typename>
+using evy = int;
+
+template <template <typename...> typename TT>
+struct qq { };
+
+template <typename T>
+struct MyId3 {
+//  using type = evy<double,T>;
+  using type = qq<StructTest>;
+};
+
+/*template <typename T>
+struct MyId4 {
+  using type = eval<id,T>;
+};*/
+
+template <class F, class V, class XS>
+struct fldl2 {
+  template <class X, class G>
+  struct s1 {
+    template <class A>
+    struct s2 {
+      using type = eval<G,eval<F,A,X>>;
+    };
+    using type = curtains::quote_c<s2>;
+  };
+  using type = eval<foldr,curtains::quote_c<s1>,id,XS,V>;
+};
