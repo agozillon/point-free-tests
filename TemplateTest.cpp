@@ -1,6 +1,12 @@
-// clang++ -std=c++14 -Xclang -ast-dump -fsyntax-only
-// point-free TemplateTest.cpp -- -std=c++14
-#include <type_traits>
+// clang++ -std=c++17 -Xclang -ast-dump -fsyntax-only
+// point-free TemplateTest.cpp -- -std=c++17
+
+#define CURTAINS_V_SIMPLE
+#include "curtains.hpp"
+using namespace curtains;
+using namespace curtains::v;
+
+// #include <type_traits>
 
 // What I believe to be correct 
 
@@ -408,11 +414,6 @@ struct StructTest3 {
    using type = NotATemplate;
 };
 
-#define CURTAINS_V_SIMPLE
-#include "curtains.hpp"
-using namespace curtains;
-using namespace curtains::v;
-
 // quote<id_t>
 template <class T>
 struct MyId {
@@ -430,16 +431,75 @@ using evy = int;
 template <template <typename...> typename TT>
 struct qq { };
 
+//template <typename T>
+//struct StructTest {
+//   using type = NotATemplate::type;
+//};
+
+
+template <typename T>
+struct TypeSubstitution {
+   using type = T;
+};
+
+template <typename T, typename T2>
+struct TypeSubstitution2 {
+   using type = T2;
+};
+
+// ClassTemplateDecl Converted To CExpr: 
+// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix T)))
+
+// CExpr After Point Free Conversion: 
+// (Var Prefix evy)
+
+// Print Curtains Lambda: 
+// quote<evy>
+template <typename T>
+struct TypeAliasTest {
+  // This works to an extent, it accesses the type alias but doesn't go deeper
+  // however it probably should as it's a type alias and not a template
+  using type = evy<T>;
+};
+
 template <typename T>
 struct MyId3 {
-//  using type = evy<double,T>;
-  using type = qq<StructTest>;
+  // (Lambda  (PVar T) (App  (Var Prefix qq) (Var Prefix StructTest)))
+ // -> 
+ // (App  (Var Prefix const_) (App  (Var Prefix qq) (Var Prefix StructTest)))
+  // using type = qq<StructTest>;
+ 
+// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix int)))
+// ->
+//  (App  (Var Prefix const_) (App  (Var Prefix evy) (Var Prefix int)))
+// ->
+// eval<const_,eval<quote<evy>,int>>
+ using type = evy<TypeSubstitution<int>::type>;
+
+
+// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix double)))
+// ->
+// (App  (Var Prefix const_) (App  (Var Prefix evy) (Var Prefix double)))
+// -> 
+// eval<const_,eval<quote<evy>,double>>
+//  using type = evy<TypeSubstitution2<int, double>::type>;
 };
 
 /*template <typename T>
 struct MyId4 {
   using type = eval<id,T>;
 };*/
+
+
+/*
+ (Lambda  (PVar F) (Lambda  (PVar V) (Lambda  (PVar XS) (App  (App  (App  (App  (App  (Var Prefix eval) (App  (Var Prefix quote_c)nullptr error 
+)) (App  (Var Prefix quote_c) (Lambda  (PVar X) (Lambda  (PVar G) (App  (Var Prefix quote_c) (Lambda  (PVar A) (App  (App  (Var Prefix eval) (Var Prefix G)) (App  (App  (App  (Var Prefix eval) (Var Prefix F)) (Var Prefix A)) (Var Prefix X))))))))) (App  (Var Prefix quote) (Var Prefix id_t))) (Var Prefix XS)) (Var Prefix V)))))
+
+
+*/
+// TRY THIS WITHOUT QUOTE_C AFTER AND SEE IF GET SAME RESULT (HOPEFULLY CORRECT)
+
+// CHECK IF IS DECLARATION OR DEFINITION 
 
 template <class F, class V, class XS>
 struct fldl2 {
@@ -451,5 +511,28 @@ struct fldl2 {
     };
     using type = curtains::quote_c<s2>;
   };
-  using type = eval<foldr,curtains::quote_c<s1>,id,XS,V>;
+  using type = eval<foldr, curtains::quote_c<s1>,id,XS,V>;
+};
+
+template<typename F, typename X>
+struct Special;
+
+template<typename F, typename X>
+struct Special {
+  using type = float;
+};
+
+template<typename X>
+struct Special<int, X> {
+  using type = int;
+};
+
+template<typename X>
+struct Special<double, X> {
+  using type = int;
+};
+
+template<>
+struct Special<double, double> {
+  using type = double;
 };
