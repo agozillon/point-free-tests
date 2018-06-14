@@ -1,6 +1,8 @@
 // clang++ -std=c++17 -Xclang -ast-dump -fsyntax-only
 // point-free TemplateTest.cpp -- -std=c++17
 
+#include <type_traits>
+
 #define CURTAINS_V_SIMPLE
 #include "curtains.hpp"
 using namespace curtains;
@@ -94,7 +96,7 @@ struct Red2 {
 // ->
 // (Var Prefix is_polymorphic::t)
 // ->
-// quote<std::is_polymorphic>
+// quote_c<std::is_polymorphic>
 template <typename T>
 struct Violet {
     using type = typename std::is_polymorphic<T>::type;
@@ -166,6 +168,11 @@ struct AliasTest {
     using type =  IntType;
 };
 
+// (Lambda  (PVar T) (Lambda  (PVar T2) (Lambda  (PVar T3) (Var Prefix T2))))
+// ->
+// (App  (Var Prefix const_) (Var Prefix const_))
+// ->
+// eval<const_,const_>
 template <typename T, typename T2, typename T3>
 struct Ap {
    using type = T2;
@@ -189,6 +196,161 @@ struct ApTest {
 template <typename T, typename T2>
 struct ApTest2 {
     using type = typename Ap<T, T2, T>::type;
+};
+
+// (Lambda  (PVar T) (App  (Var Prefix id_t) (Var Prefix T)))
+// ->
+// (Var Prefix id_t)
+// ->
+// quote<id_t>
+template <class T>
+struct MyId {
+  using type = impl::id_t<T>;
+};
+
+// (Lambda  (PVar T) (App  (Var Prefix eval) (Var Prefix T)))
+// ->
+// (Var Prefix id)
+// ->
+// id
+template <typename T>
+struct MyId2 {
+  using type = eval<T>;
+};
+
+// helper for bigger example
+template <typename T>
+struct TypeSubstitution {
+   using type = T;
+};
+
+// helper for bigger example
+template <typename T, typename T2>
+struct TypeSubstitution2 {
+   using type = T2;
+};
+
+// this on it's own isn't supported for translation 
+template <typename>
+using evy = int;
+
+// ClassTemplateDecl Converted To CExpr: 
+// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix T)))
+
+// CExpr After Point Free Conversion: 
+// (Var Prefix evy)
+
+// Print Curtains Lambda: 
+// quote<evy>
+template <typename T>
+struct TypeAliasTest {
+  // This works to an extent, it accesses the type alias but doesn't go deeper
+  // however it probably should as it's a type alias and not a template
+  using type = evy<T>;
+};
+
+template <typename T>
+struct MyId3 {
+  // (Lambda  (PVar T) (App  (Var Prefix qq) (Var Prefix StructTest)))
+ // -> 
+ // (App  (Var Prefix const_) (App  (Var Prefix qq) (Var Prefix StructTest)))
+  // using type = qq<StructTest>;
+ 
+// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix int)))
+// ->
+//  (App  (Var Prefix const_) (App  (Var Prefix evy) (Var Prefix int)))
+// ->
+// eval<const_,eval<quote<evy>,int>>
+// using type = evy<TypeSubstitution<int>::type>;
+
+
+// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix double)))
+// ->
+// (App  (Var Prefix const_) (App  (Var Prefix evy) (Var Prefix double)))
+// -> 
+// eval<const_,eval<quote<evy>,double>>
+  using type = evy<TypeSubstitution2<int, double>::type>;
+};
+
+// (Lambda  (PVar T) (App  (App  (Var Prefix eval) (App  (Var Prefix quote) (Var Prefix id_t))) (Var Prefix T)))
+// ->
+// (Var Prefix id_t)
+// ->
+// quote<id_t>
+template <typename T>
+struct MyId4 {
+  using type = eval<id,T>;
+};
+
+/*
+(Lambda  (PVar F) (Lambda  (PVar V) (Lambda  (PVar XS) (App  (App  (App  (App  (App  (Var Prefix eval) (App  (Var Prefix quote_c) (Var Prefix foldr_c))) (App  (Var Prefix quote_c) (Lambda  (PVar X) (Lambda  (PVar G) (App  (Var Prefix quote_c) (Lambda  (PVar A) (App  (App  (Var Prefix eval) (Var Prefix G)) (App  (App  (App  (Var Prefix eval) (Var Prefix F)) (Var Prefix A)) (Var Prefix X))))))))) (App  (Var Prefix quote) (Var Prefix id_t))) (Var Prefix XS)) (Var Prefix V)))))
+  
+CExpr After Point Free Conversion: 
+ (App  (App  (Var Infix compose) (Var Prefix flip)) (App  (App  (Var Prefix flip) (App  (App  (Var Infix compose) (Var Prefix foldr_c)) (App  (App  (Var Infix compose) (App  (Var Infix compose) (App  (Var Prefix flip) (Var Infix compose)))) (Var Prefix flip)))) (Var Prefix id_t)))
+
+// Print Curtains Lambda: (this ignores and doesn't prefix namespaces onto anything, so foldr_c and id_t need to be prefixed with impl:: or the curtains::impl namespace needs to be in scope)
+eval<eval<compose,flip>,eval<eval<flip,eval<eval<compose,quote_c<foldr_c>>,eval<eval<compose,eval<compose,eval<flip,compose>>>,flip>>>,quote<id_t>>>
+*/
+template <class F, class V, class XS>
+struct fldl2 {
+  template <class X, class G>
+  struct s1 {
+    template <class A>
+    struct s2 {
+      using type = eval<G,eval<F,A,X>>;
+    };
+    using type = curtains::quote_c<s2>;
+  };
+  using type = eval<foldr, curtains::quote_c<s1>,id,XS,V>;
+};
+
+// We can convert specilizations, however they're not particularly interesting
+// as they lost the interesting component of specialization i.e. swapping to each case
+// based on the arguments fed to it. To have truly interesting specialization we would 
+// have to introduce case statements of somekind within curtiains.
+
+// no valid conversion, returns nullptr
+template<typename F, typename X>
+struct Special;
+
+// (Lambda  (PVar F) (Lambda  (PVar X) (Var Prefix float)))
+// ->
+// (App  (Var Prefix const_) (App  (Var Prefix const_) (Var Prefix float)))
+// ->
+// eval<const_,eval<const_,float>>
+template<typename F, typename X>
+struct Special {
+  using type = float;
+};
+
+// (Lambda  (PVar X) (Var Prefix int))
+// ->
+// (App  (Var Prefix const_) (Var Prefix int))
+// -> 
+// eval<const_,int>
+template<typename X>
+struct Special<int, X> {
+  using type = int;
+};
+
+// (Lambda  (PVar X) (Var Prefix int))
+// ->
+//  (App  (Var Prefix const_) (Var Prefix int))
+// ->
+// eval<const_,int>
+template<typename X>
+struct Special<double, X> {
+  using type = int;
+};
+
+// (Var Prefix double)
+// ->
+// (Var Prefix double)
+// ->
+// double
+template<>
+struct Special<double, double> {
+  using type = double;
 };
 
 // Broken Tests:
@@ -223,8 +385,6 @@ struct VariadicPeel<T, Ts...> : VariadicPeel<Ts...> {
 // Unsure what to do with: 
 
 // Not Tested:
-
-
 
 // Not Critical Test Cases (Organized by Importance)
 
@@ -414,125 +574,3 @@ struct StructTest3 {
    using type = NotATemplate;
 };
 
-// quote<id_t>
-template <class T>
-struct MyId {
-  using type = impl::id_t<T>;
-};
-
-template <typename T>
-struct MyId2 {
-  using type = eval<T>;
-};
-
-template <typename>
-using evy = int;
-
-template <template <typename...> typename TT>
-struct qq { };
-
-//template <typename T>
-//struct StructTest {
-//   using type = NotATemplate::type;
-//};
-
-
-template <typename T>
-struct TypeSubstitution {
-   using type = T;
-};
-
-template <typename T, typename T2>
-struct TypeSubstitution2 {
-   using type = T2;
-};
-
-// ClassTemplateDecl Converted To CExpr: 
-// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix T)))
-
-// CExpr After Point Free Conversion: 
-// (Var Prefix evy)
-
-// Print Curtains Lambda: 
-// quote<evy>
-template <typename T>
-struct TypeAliasTest {
-  // This works to an extent, it accesses the type alias but doesn't go deeper
-  // however it probably should as it's a type alias and not a template
-  using type = evy<T>;
-};
-
-template <typename T>
-struct MyId3 {
-  // (Lambda  (PVar T) (App  (Var Prefix qq) (Var Prefix StructTest)))
- // -> 
- // (App  (Var Prefix const_) (App  (Var Prefix qq) (Var Prefix StructTest)))
-  // using type = qq<StructTest>;
- 
-// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix int)))
-// ->
-//  (App  (Var Prefix const_) (App  (Var Prefix evy) (Var Prefix int)))
-// ->
-// eval<const_,eval<quote<evy>,int>>
- using type = evy<TypeSubstitution<int>::type>;
-
-
-// (Lambda  (PVar T) (App  (Var Prefix evy) (Var Prefix double)))
-// ->
-// (App  (Var Prefix const_) (App  (Var Prefix evy) (Var Prefix double)))
-// -> 
-// eval<const_,eval<quote<evy>,double>>
-//  using type = evy<TypeSubstitution2<int, double>::type>;
-};
-
-/*template <typename T>
-struct MyId4 {
-  using type = eval<id,T>;
-};*/
-
-
-/*
- (Lambda  (PVar F) (Lambda  (PVar V) (Lambda  (PVar XS) (App  (App  (App  (App  (App  (Var Prefix eval) (App  (Var Prefix quote_c)nullptr error 
-)) (App  (Var Prefix quote_c) (Lambda  (PVar X) (Lambda  (PVar G) (App  (Var Prefix quote_c) (Lambda  (PVar A) (App  (App  (Var Prefix eval) (Var Prefix G)) (App  (App  (App  (Var Prefix eval) (Var Prefix F)) (Var Prefix A)) (Var Prefix X))))))))) (App  (Var Prefix quote) (Var Prefix id_t))) (Var Prefix XS)) (Var Prefix V)))))
-
-
-*/
-// TRY THIS WITHOUT QUOTE_C AFTER AND SEE IF GET SAME RESULT (HOPEFULLY CORRECT)
-
-// CHECK IF IS DECLARATION OR DEFINITION 
-
-template <class F, class V, class XS>
-struct fldl2 {
-  template <class X, class G>
-  struct s1 {
-    template <class A>
-    struct s2 {
-      using type = eval<G,eval<F,A,X>>;
-    };
-    using type = curtains::quote_c<s2>;
-  };
-  using type = eval<foldr, curtains::quote_c<s1>,id,XS,V>;
-};
-
-template<typename F, typename X>
-struct Special;
-
-template<typename F, typename X>
-struct Special {
-  using type = float;
-};
-
-template<typename X>
-struct Special<int, X> {
-  using type = int;
-};
-
-template<typename X>
-struct Special<double, X> {
-  using type = int;
-};
-
-template<>
-struct Special<double, double> {
-  using type = double;
-};
