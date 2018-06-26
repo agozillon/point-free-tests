@@ -1,5 +1,10 @@
-// clang++ -std=c++17 -Xclang -ast-dump -fsyntax-only
-// point-free TemplateTest.cpp -- -std=c++17
+// For example:
+//
+// $ point-free TemplateTest.hpp -structorclass=Foo -- -std=c++17 -I ~/projects/curtains
+// eval<const_,int>
+//
+// $ point-free TemplateTest.cpp -structorclass=fldl2 -- -std=c++17 -I ~/projects/curtains
+// eval<eval<compose,flip>,eval<eval<flip,eval<eval<compose,quote_c<foldr_c>>,eval<eval<compose,eval<compose,eval<flip,compose>>>,flip>>>,quote<id_t>>>
 
 #include <type_traits>
 

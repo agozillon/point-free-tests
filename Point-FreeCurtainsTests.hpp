@@ -1,10 +1,6 @@
-#include <exception>
-#include <stdexcept>
 #include <type_traits>
-
-#include "../curtains.hpp"
-#include "../prelude/prelude_includes.hpp"
-#include "../ski.hpp"
+#include "curtains.hpp"
+#include "ski.hpp"
 
 using namespace curtains;
 using std::is_same_v;
@@ -208,14 +204,18 @@ static_assert(is_same_v<char, fldl2<const_,char,list<int,float>>::type>);
 static_assert(is_same_v<char, eval< eval<eval<compose,flip>,eval<eval<flip,eval<eval<compose,foldr>,eval<eval<compose,eval<compose,eval<flip,compose>>>,flip>>>,id>>  , const_, char, list<>>>);
 static_assert(is_same_v<char, eval< eval<eval<compose,flip>,eval<eval<flip,eval<eval<compose,foldr>,eval<eval<compose,eval<compose,eval<flip,compose>>>,flip>>>,id>>  , const_, char, list<int,float>>>);
 
-static_assert(is_same_v<char, eval< eval<eval<compose,flip>,eval<eval<flip,eval<eval<compose,foldr>,eval<eval<compose,eval<compose,eval<flip,compose>>>,flip>>>,quote_c<id_t>>>  , const_, char, list<int,float>>>);
+static_assert(is_same_v<int,eval<quote_c<impl::id_c>,int>>);
+//impl::id_t<int> ff = &ff;
+static_assert(is_same_v<int,eval<quote<impl::id_t>,int>>);
+
+static_assert(is_same_v<char, eval< eval<eval<compose,flip>,eval<eval<flip,eval<eval<compose,foldr>,eval<eval<compose,eval<compose,eval<flip,compose>>>,flip>>>,quote<impl::id_t>>>  , const_, char, list<int,float>>>);
 
 
 eval<compose,foldr> smallBroken; 	// works
 //eval<compose,quote<foldr>> smallBroken; // doesn't work
 
 // id_t will compile, but give incorrect answers as its not setup like id is. 
-eval<compose, id_t> sb; // works 
+eval<compose, quote<impl::id_t>> sb; // works 
 //eval<compose,quote<id_t> sb; // doesn't work
 
 eval<compose, id> sb1; // works and is correct
@@ -229,6 +229,7 @@ static_assert(is_same_v<char,eval<eval<eval<compose,flip>,eval<eval<flip,eval<ev
 
 /*
 eval<eval<const_,eval<flip,eval<eval<eval<quote<eval>,eval<quote<quote_c>,quote<foldr_c>>>,eval<quote<quote_c>,quote<s1>>>,eval<quote<quote>,quote<id_t>>>>>, const_,char,list<int,float>> tempeval;
+*/
 
 //static_assert(is_same_v<char, >);
 
