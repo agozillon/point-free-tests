@@ -1,3 +1,4 @@
+// Copyright (c) 2018 Andrew Gozillon & Paul Keir, University of the West of Scotland.
 // For example:
 //
 // $ point-free TemplateTest.hpp -structorclass=Foo -- -std=c++17 -I ~/projects/curtains

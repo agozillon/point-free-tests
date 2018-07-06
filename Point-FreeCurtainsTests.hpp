@@ -1,3 +1,4 @@
+// Copyright (c) 2018 Andrew Gozillon & Paul Keir, University of the West of Scotland.
 #include <type_traits>
 #include "curtains.hpp"
 #include "ski.hpp"
